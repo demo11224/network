@@ -23,7 +23,8 @@ public class TenantHandler implements TenantLineHandler {
 
     /** 不需要租户字段的表 */
     private static final List<String> DEFAULT_IGNORE_TABLES = Arrays.asList(
-            "sys_tenant", "sys_menu", "sys_dict_type", "sys_dict_data", "sys_config"
+            "sys_tenant", "sys_menu", "sys_dict_type", "sys_dict_data", "sys_config",
+            "sys_user_role", "sys_role_menu", "sys_user_post", "sys_role_dept"
     );
 
     @Override

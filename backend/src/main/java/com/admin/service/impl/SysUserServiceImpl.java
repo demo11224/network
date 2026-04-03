@@ -82,13 +82,18 @@ public class SysUserServiceImpl implements ISysUserService {
 
     @Override
     public int resetPwd(SysUser user) {
-        user.setPassword(passwordEncoder.encode(user.getPassword()));
-        return userMapper.updateById(user);
+        SysUser updateUser = new SysUser();
+        updateUser.setUserId(user.getUserId());
+        updateUser.setPassword(passwordEncoder.encode(user.getPassword()));
+        return userMapper.updateById(updateUser);
     }
 
     @Override
     public int updateUserStatus(SysUser user) {
-        return userMapper.updateById(user);
+        SysUser updateUser = new SysUser();
+        updateUser.setUserId(user.getUserId());
+        updateUser.setStatus(user.getStatus());
+        return userMapper.updateById(updateUser);
     }
 
     @Override

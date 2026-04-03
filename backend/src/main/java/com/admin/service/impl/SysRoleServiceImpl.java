@@ -80,7 +80,10 @@ public class SysRoleServiceImpl implements ISysRoleService {
 
     @Override
     public int updateRoleStatus(SysRole role) {
-        return roleMapper.updateById(role);
+        SysRole updateRole = new SysRole();
+        updateRole.setRoleId(role.getRoleId());
+        updateRole.setStatus(role.getStatus());
+        return roleMapper.updateById(updateRole);
     }
 
     @Override

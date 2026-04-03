@@ -32,7 +32,7 @@ public class SysDeptController {
     public R<?> excludeChild(@PathVariable Long deptId) {
         List<SysDept> depts = deptService.selectDeptList(new SysDept());
         depts.removeIf(d -> d.getDeptId().equals(deptId) ||
-                (d.getAncestors() != null && d.getAncestors().contains("," + deptId + ",")));
+                (d.getAncestors() != null && (d.getAncestors().contains("," + deptId + ",") || d.getAncestors().endsWith("," + deptId))));
         return R.ok(depts);
     }
 
