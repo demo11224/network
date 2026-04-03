@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.admin.mapper.SysConfigMapper">
+    <select id="selectConfigList" parameterType="SysConfig" resultType="SysConfig">
+        select config_id, config_name, config_key, config_value, config_type, create_by, create_time, remark
+        from sys_config
+        <where>
+            <if test="configName != null and configName != ''">
+                AND config_name like concat('%', #{configName}, '%')
+            </if>
+            <if test="configKey != null and configKey != ''">
+                AND config_key like concat('%', #{configKey}, '%')
+            </if>
+            <if test="configType != null and configType != ''">
+                AND config_type = #{configType}
+            </if>
+        </where>
+        order by create_time desc
+    </select>
+
+    <select id="selectConfigByKey" parameterType="String" resultType="SysConfig">
+        select config_id, config_name, config_key, config_value, config_type from sys_config where config_key = #{configKey} limit 1
+    </select>
+
+    <select id="checkConfigKeyUnique" parameterType="String" resultType="int">
+        select count(1) from sys_config where config_key = #{configKey} limit 1
+    </select>
+</mapper>

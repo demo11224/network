@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.admin.mapper.SysNoticeMapper">
+    <select id="selectNoticeList" parameterType="SysNotice" resultType="SysNotice">
+        select notice_id, tenant_id, notice_title, notice_type, notice_content, status, create_by, create_time, remark
+        from sys_notice
+        <where>
+            <if test="noticeTitle != null and noticeTitle != ''">
+                AND notice_title like concat('%', #{noticeTitle}, '%')
+            </if>
+            <if test="noticeType != null and noticeType != ''">
+                AND notice_type = #{noticeType}
+            </if>
+            <if test="createBy != null and createBy != ''">
+                AND create_by like concat('%', #{createBy}, '%')
+            </if>
+        </where>
+        order by create_time desc
+    </select>
+</mapper>
