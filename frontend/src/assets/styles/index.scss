@@ -1,0 +1,69 @@
+html, body {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  font-family: "Helvetica Neue", Helvetica, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", Arial, sans-serif;
+  font-size: 14px;
+  color: #333;
+  -webkit-font-smoothing: antialiased;
+}
+
+#app {
+  height: 100%;
+}
+
+*,
+*:before,
+*:after {
+  box-sizing: border-box;
+}
+
+a {
+  color: #409EFF;
+  text-decoration: none;
+}
+
+// 滚动条
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(144, 147, 153, 0.3);
+  border-radius: 3px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+// Element UI 覆盖
+.el-pagination {
+  margin-top: 15px;
+  text-align: right;
+}
+
+.el-dialog__header {
+  border-bottom: 1px solid #eee;
+  padding-bottom: 15px;
+}
+
+.el-dialog__footer {
+  border-top: 1px solid #eee;
+  padding-top: 15px;
+}
+
+.el-table {
+  .el-table__header th {
+    background-color: #f8f8f9;
+  }
+}
+
+// sidebar menu override
+.el-menu {
+  border-right: none !important;
+}
+
+.el-submenu__title:hover,
+.el-menu-item:hover {
+  background-color: rgba(0, 0, 0, 0.06) !important;
+}
