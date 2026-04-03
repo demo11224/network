@@ -24,6 +24,7 @@
         <jjwt.version>0.9.1</jjwt.version>
         <fastjson.version>2.0.32</fastjson.version>
         <pagehelper.version>1.4.6</pagehelper.version>
+        <jsqlparser.version>4.4</jsqlparser.version>
     </properties>
 
     <dependencies>
@@ -106,6 +107,13 @@
         <dependency>
             <groupId>org.apache.commons</groupId>
             <artifactId>commons-lang3</artifactId>
+        </dependency>
+
+        <!-- JSqlParser (force version compatible with MyBatis-Plus) -->
+        <dependency>
+            <groupId>com.github.jsqlparser</groupId>
+            <artifactId>jsqlparser</artifactId>
+            <version>${jsqlparser.version}</version>
         </dependency>
 
         <!-- Swagger -->
