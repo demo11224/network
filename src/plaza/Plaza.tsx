@@ -206,92 +206,124 @@ export function Plaza() {
 
   return (
     <div className="h-full min-h-0 overflow-y-auto">
-      <div className="mx-auto max-w-6xl px-8 py-8">
-        {/* Hero */}
+      <div className="mx-auto w-full max-w-[1280px] px-6 py-6 lg:px-8">
+        {/* Hero - compact */}
         <motion.div
-          initial={{ opacity: 0, y: 10 }}
+          initial={{ opacity: 0, y: 8 }}
           animate={{ opacity: 1, y: 0 }}
-          className="flex items-center justify-between"
+          className="flex items-center justify-between gap-4"
         >
-          <div>
-            <div className="flex items-center gap-2 text-[12px] font-medium text-brand-600">
+          <div className="min-w-0">
+            <div className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-wider text-brand-600">
               <Sparkles className="h-3.5 w-3.5" />
               AGENT MARKETPLACE
             </div>
-            <h1 className="mt-1 text-2xl font-bold tracking-tight text-slate-900">
+            <h1 className="mt-1 text-xl font-bold tracking-tight text-slate-900 lg:text-2xl">
               智能体广场
+              <span className="ml-2 align-middle text-xs font-normal text-slate-400">
+                共 {AGENTS.length} 个原子能力
+              </span>
             </h1>
-            <p className="mt-1 max-w-xl text-sm text-slate-500">
-              汇聚 M 域所有原子能力。可按部门 / 场景筛选，支持身份沙箱模拟——切换身份后，系统将按权限与使用偏好智能排序与高亮。
+            <p className="mt-1 hidden max-w-2xl text-[13px] text-slate-500 md:block">
+              按部门 / 场景筛选，切换身份沙箱后系统将按权限与使用偏好智能排序与高亮。
             </p>
           </div>
-          <motion.div
-            initial={{ opacity: 0, scale: 0.9 }}
-            animate={{ opacity: 1, scale: 1 }}
-            className="hidden rounded-2xl border border-brand-200 bg-gradient-to-br from-brand-50 via-white to-sky-50 p-4 md:block"
-          >
-            <div className="flex items-center gap-2 text-[11px] font-medium text-brand-700">
-              <FlaskConical className="h-3.5 w-3.5" />
-              身份沙箱模拟
+          <div className="hidden shrink-0 items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 shadow-soft lg:flex">
+            <Users className="h-4 w-4 text-slate-400" />
+            <div className="text-[11px] leading-tight">
+              <div className="font-medium text-slate-700">当前身份</div>
+              <div className="text-slate-400">{activePersona?.label}</div>
             </div>
-            <div className="mt-2 w-[220px]">
-              <Select
-                value={persona}
-                onChange={(v) => setPersona(v as Persona)}
-                options={PERSONA_OPTIONS}
-                size="sm"
-              />
-            </div>
-            <div className="mt-2 text-[11px] text-slate-400">
-              当前以「{activePersona?.label}」身份预览广场
-            </div>
-          </motion.div>
+          </div>
         </motion.div>
 
-        {/* Filters */}
-        <div className="mt-6 flex flex-wrap items-center gap-3 rounded-2xl border border-slate-200 bg-white p-3 shadow-soft">
-          <div className="flex items-center gap-2 text-xs text-slate-500">
-            <Filter className="h-3.5 w-3.5" />
-            部门
-          </div>
-          <Select
-            className="w-[140px]"
-            size="sm"
-            value={dept}
-            onChange={(v) => setDept(v as Dept)}
-            options={DEPT_OPTIONS}
-          />
-          <div className="ml-2 flex items-center gap-2 text-xs text-slate-500">
-            场景
-          </div>
-          <Select
-            className="w-[160px]"
-            size="sm"
-            value={scene}
-            onChange={(v) => setScene(v as Scene)}
-            options={SCENE_OPTIONS}
-          />
-          <div className="ml-auto flex items-center gap-2">
-            <div className="relative">
-              <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
-              <input
-                value={q}
-                onChange={(e) => setQ(e.target.value)}
-                placeholder="搜索智能体..."
-                className="h-8 w-[200px] rounded-lg border border-slate-200 bg-white pl-7 pr-2 text-[13px] outline-none focus:border-brand-400"
-              />
+        {/* Filters + Persona sandbox (核心交互提到这里) */}
+        <div className="mt-5 space-y-3">
+          {/* Persona Sandbox - 独立一行，最显眼 */}
+          <motion.div
+            layout
+            className="flex flex-wrap items-center gap-3 rounded-2xl border border-brand-200 bg-gradient-to-r from-brand-50 via-white to-sky-50 px-4 py-3 shadow-soft"
+          >
+            <div className="flex items-center gap-2">
+              <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-white text-brand-600 shadow-sm">
+                <FlaskConical className="h-3.5 w-3.5" />
+              </div>
+              <div className="text-[12px] leading-tight">
+                <div className="font-semibold text-brand-700">
+                  身份沙箱模拟
+                </div>
+                <div className="text-[11px] text-slate-500">
+                  切换身份，广场自动重排序并高亮推荐
+                </div>
+              </div>
             </div>
-            <Badge tone="brand">
-              <Boxes className="h-3 w-3" />
-              共 {filtered.length} 个
-            </Badge>
+            <div className="ml-auto flex flex-wrap items-center gap-1.5">
+              {PERSONA_OPTIONS.map((p) => {
+                const active = persona === p.value;
+                return (
+                  <button
+                    key={p.value}
+                    onClick={() => setPersona(p.value)}
+                    className={cn(
+                      "inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-[12px] font-medium transition",
+                      active
+                        ? "border-brand-500 bg-brand-600 text-white shadow-sm"
+                        : "border-slate-200 bg-white text-slate-600 hover:border-brand-300 hover:text-brand-700"
+                    )}
+                  >
+                    {p.icon}
+                    {p.label}
+                  </button>
+                );
+              })}
+            </div>
+          </motion.div>
+
+          {/* Dept / Scene / Search */}
+          <div className="flex flex-wrap items-center gap-3 rounded-2xl border border-slate-200 bg-white p-3 shadow-soft">
+            <div className="flex items-center gap-2 text-xs text-slate-500">
+              <Filter className="h-3.5 w-3.5" />
+              部门
+            </div>
+            <Select
+              className="w-[140px]"
+              size="sm"
+              value={dept}
+              onChange={(v) => setDept(v as Dept)}
+              options={DEPT_OPTIONS}
+            />
+            <div className="ml-1 flex items-center gap-2 text-xs text-slate-500">
+              场景
+            </div>
+            <Select
+              className="w-[150px]"
+              size="sm"
+              value={scene}
+              onChange={(v) => setScene(v as Scene)}
+              options={SCENE_OPTIONS}
+            />
+            <div className="ml-auto flex items-center gap-2">
+              <div className="relative">
+                <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
+                <input
+                  value={q}
+                  onChange={(e) => setQ(e.target.value)}
+                  placeholder="搜索智能体..."
+                  className="h-8 w-[200px] rounded-lg border border-slate-200 bg-white pl-7 pr-2 text-[13px] outline-none transition focus:border-brand-400 focus:ring-2 focus:ring-brand-500/20"
+                />
+              </div>
+              <Badge tone="brand">
+                <Boxes className="h-3 w-3" />
+                命中 {filtered.length}
+              </Badge>
+            </div>
           </div>
         </div>
 
         {/* Grid with layout animation */}
         <motion.div
           layout
-          className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3"
+          className="mt-5 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"
         >
           <AnimatePresence>
             {filtered.map((a) => (
@@ -301,7 +333,7 @@ export function Plaza() {
         </motion.div>
 
         {/* Footer note */}
-        <div className="mt-10 flex items-center justify-center gap-3 text-[11px] text-slate-400">
+        <div className="mt-8 flex items-center justify-center gap-2 text-[11px] text-slate-400">
           <Shield className="h-3 w-3" />
           所有智能体均运行在 M 域独立沙箱，数据不出域 · Cursor Demo
         </div>
@@ -320,7 +352,7 @@ function AgentCard({ agent }: { agent: Agent & { highlight?: boolean } }) {
       transition={{ duration: 0.25, ease: "easeOut" }}
       whileHover={{ y: -4 }}
       className={cn(
-        "group relative cursor-pointer overflow-hidden rounded-2xl border bg-white p-5 shadow-soft transition",
+        "group relative flex cursor-pointer flex-col overflow-hidden rounded-2xl border bg-white p-4 shadow-soft transition",
         "hover:shadow-elev",
         agent.highlight
           ? "border-brand-300 ring-2 ring-brand-200/60"
@@ -336,7 +368,7 @@ function AgentCard({ agent }: { agent: Agent & { highlight?: boolean } }) {
       <div className="relative flex items-start justify-between">
         <div
           className={cn(
-            "flex h-11 w-11 items-center justify-center rounded-xl bg-gradient-to-br text-white shadow-sm",
+            "flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br text-white shadow-sm",
             accentBg[agent.accent]
           )}
         >
@@ -348,8 +380,8 @@ function AgentCard({ agent }: { agent: Agent & { highlight?: boolean } }) {
         </div>
       </div>
 
-      <div className="relative mt-4">
-        <div className="flex items-center gap-1.5">
+      <div className="relative mt-3">
+        <div className="flex flex-wrap items-center gap-1.5">
           <h3 className="text-sm font-semibold text-slate-900">{agent.name}</h3>
           {agent.highlight && (
             <Badge tone="brand">
@@ -358,12 +390,12 @@ function AgentCard({ agent }: { agent: Agent & { highlight?: boolean } }) {
             </Badge>
           )}
         </div>
-        <p className="mt-1 line-clamp-2 text-[13px] leading-relaxed text-slate-500">
+        <p className="mt-1 line-clamp-2 text-[12.5px] leading-relaxed text-slate-500">
           {agent.desc}
         </p>
       </div>
 
-      <div className="relative mt-4 flex flex-wrap gap-1.5">
+      <div className="relative mt-3 flex flex-wrap gap-1.5">
         {agent.tags.map((t) => (
           <span
             key={t}
@@ -375,7 +407,7 @@ function AgentCard({ agent }: { agent: Agent & { highlight?: boolean } }) {
         ))}
       </div>
 
-      <div className="relative mt-5 flex items-center justify-between border-t border-slate-100 pt-3">
+      <div className="relative mt-4 flex items-center justify-between border-t border-slate-100 pt-3">
         <div className="flex items-center gap-1 text-[11px] text-slate-400">
           <LifeBuoy className="h-3 w-3" />
           平均 {Math.round(agent.heat / 12)} 次/月

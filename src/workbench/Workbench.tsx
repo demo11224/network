@@ -9,7 +9,7 @@ export function Workbench() {
   const wb = useWorkbench();
 
   return (
-    <div className="flex h-full min-h-0 w-full gap-5 p-5">
+    <div className="flex h-full min-h-0 w-full gap-4 p-4 lg:gap-5 lg:p-5">
       {/* Left column: chat stream */}
       <div className="flex min-w-0 flex-1 flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white/60 shadow-soft glass">
         <div className="flex items-center justify-between border-b border-slate-100 bg-white/60 px-6 py-4 backdrop-blur">
