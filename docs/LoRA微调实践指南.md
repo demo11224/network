@@ -175,7 +175,67 @@ eval_steps: 200
 
 ---
 
-## 八、参考文献
+## 八、实际落地容易漏掉的问题（训完之后才会撞上的坑）
+
+前七章解决"怎么训好"，这一章解决"训好之后别翻车"——以下问题在训练阶段全部不可见，到部署和迭代时才爆发。
+
+### 8.1 adapter 与基座是"强绑定"，必须一起做版本管理
+
+adapter 学到的是**针对某一份具体权重的增量**。基座换了版本（哪怕是同名模型的权重修订、量化版本、甚至别人 merge 过的"同款"），adapter 的行为就不可预期。落地纪律：
+
+- adapter 的版本记录里必须钉死：基座的精确标识（HF repo + revision/commit）、训练框架与 PEFT 版本、template 名称；
+- 部署侧加载 adapter 前校验基座指纹（哪怕只是核对 config 的 hash），不要相信"名字一样就是一样"。
+
+### 8.2 merge 与量化的顺序是单行道
+
+```
+正确：LoRA adapter ──merge──→ bf16 基座 ──再量化──→ GPTQ/AWQ 部署
+错误：把 adapter merge 进已量化的模型（GPTQ/AWQ 权重不可直接吸收 bf16 增量）
+错误：QLoRA 训完直接在 4-bit bnb 模型上 merge（误差被固化）
+```
+
+如果部署形态必须是"量化基座 + 不合并的 adapter"（多租户场景），那是另一条合法路线（vLLM 支持在量化基座上挂 LoRA），但**评测必须在这个最终形态上做**，不能拿 bf16 merge 版的盲测结果替代。
+
+### 8.3 vLLM 多 adapter 部署的硬限制（vLLM 官方文档 [13]）
+
+| 限制 | 内容 | 对策 |
+|---|---|---|
+| `max_lora_rank` 默认 16 | 高于它的 adapter 加载会失败 | 启动时设为所有 adapter 中的最大 rank |
+| 设得过高有真实代价 | vLLM 按 `max_lora_rank` 预分配张量，过高导致显存浪费、零填充计算、L2 缓存命中率下降——官方文档明确：有 [16,32,64] 的 adapter 就设 64，不要设 256 | **训练时就把 rank 规划好**：同一服务池的 adapter 尽量统一 rank，这是训练阶段要替部署做的决定 |
+| `modules_to_save` 不支持 | 训练时如果全参保存了 `lm_head`/`embed_tokens`（加特殊 token 的常见操作），该 adapter **无法以热插拔方式部署**，必须 merge 成完整模型单独部署 | 见 8.4 |
+| 未合并 serving 有少量开销 | 旁路计算无法完全免费，高并发下吞吐略低于 merge 版 | 单业务独占模型就 merge；多租户共基座才用热插拔 |
+
+### 8.4 "加几个特殊 token"是有连锁反应的决定
+
+给工具调用、思维链标记等加新 special token，意味着必须训练 embedding 和 lm_head（`modules_to_save` 或 `additional_target`），连锁后果：adapter 体积从几十 MB 涨到 GB 级（embedding 是全参保存的）、失去 vLLM 热插拔资格（8.3）、与其他 adapter 共基座的能力作废。**决策原则：能用现有 token 组合表达的（如用文本标记 `<tool>` 字样而非新增 token id），就不要动词表**；确需动词表，按"merge 后独立部署"规划，别按多租户规划。
+
+### 8.5 迭代不要"叠罗汉"：merge→再训→再 merge 是漂移之路
+
+每轮 merge 都把上一轮的低秩增量固化进基座，下一轮 LoRA 又在偏移后的权重上学新增量——几轮之后模型行为漂移无法归因，且无法回滚到任意中间状态。正确的迭代姿势（与《落地手册》9.3 一致）：**数据累积、模型重训——每轮都从原始基座 + 全量最新数据训新 adapter**，基座永远干净，任何版本可复现。
+
+SFT-LoRA 之后接 DPO 的衔接是这个问题的特例，TRL 官方文档 [9] 给出三种姿势：①SFT adapter merge 进基座，在新基座上挂新 adapter 做 DPO（最常用）；②同一 adapter 加载两份、用 `model_adapter_name`/`ref_adapter_name` 区分训练与参考（最省显存且无 merge 误差）；③两个完整模型实例（最浪费，不推荐）。
+
+### 8.6 多个 LoRA 直接相加合并会"打架"
+
+想把"客服 adapter + 工具调用 adapter"加在一起得到全能模型？naive 的权重相加会产生参数干扰，两个能力同时退化。学术上有专门的合并方法：**TIES-Merging**（Yadav et al., NeurIPS 2023 [14]，裁剪+符号对齐再合并）和 **DARE**（Yu et al., 2024 [15]，随机丢弃+缩放）能显著缓解，PEFT 的 `add_weighted_adapter` 已内置支持。但工程上的诚实建议：**合并多 adapter 是实验性手段，生产场景优先选"数据合并重训一个 adapter"或"多 adapter 路由各管各的"**，可控性高一个档次。
+
+### 8.7 训练引擎和推理引擎算出来的不是同一个模型
+
+transformers（训练评估）与 vLLM/SGLang（线上推理）在算子实现、KV cache、采样细节上存在数值差异，LoRA 旁路放大了这种敏感性。低成本保险：**上线前用部署引擎本体重跑一遍盲测集**，确认与训练侧评估结论一致——这一步发现过的问题包括 template 渲染差异、stop token 配置不同、未合并 adapter 的 dtype 不匹配。
+
+### 8.8 小数据场景的 seed 方差大到能翻转结论
+
+几百~几千条数据训 LoRA，换个随机种子盲测分差出 2~3 个点很常见。意味着：单次实验的 A/B 结论不可靠。纪律：关键决策（如"r=8 还是 r=16 好"）至少跑 2~3 个 seed 看均值；如果两个配置的差距小于 seed 方差，**结论是"没有差别"**，选省资源的那个。
+
+### 8.9 adapter 的安全与合规三件事
+
+1. **adapter 也会背出训练数据**：低秩不等于不记忆，PII（手机号、订单号）清洗在 LoRA 训练前同样必须做（《落地手册》第十章）；
+2. **第三方 adapter 是供应链风险**：从 HF 下载的 adapter 可能植入后门行为（特定触发词改变输出），来路不明的 adapter 上线前过红线评测，等同对待不可信代码；
+3. **adapter 是基座的衍生物**：对外分发 adapter 受基座许可证约束（Llama 系条款尤其要查），"我只发布了 adapter 没发布模型"不构成豁免。
+
+---
+
+## 九、参考文献
 
 [1] Hu et al. *LoRA: Low-Rank Adaptation of Large Language Models*. ICLR 2022. [arXiv:2106.09685](https://arxiv.org/abs/2106.09685)
 
@@ -200,3 +260,9 @@ eval_steps: 200
 [11] Liu et al. *Improved Baselines with Visual Instruction Tuning*（LLaVA-1.5）. CVPR 2024. [arXiv:2310.03744](https://arxiv.org/abs/2310.03744)
 
 [12] Peng et al. *YaRN: Efficient Context Window Extension of Large Language Models*. ICLR 2024. [arXiv:2309.00071](https://arxiv.org/abs/2309.00071)
+
+[13] vLLM 官方文档. *LoRA Adapters*. [docs.vllm.ai/en/latest/features/lora](https://docs.vllm.ai/en/latest/features/lora/)（`max_lora_rank` 默认 16 与配置代价、`modules_to_save` 不支持、多 adapter 服务机制的出处）
+
+[14] Yadav et al. *TIES-Merging: Resolving Interference When Merging Models*. NeurIPS 2023. [arXiv:2306.01708](https://arxiv.org/abs/2306.01708)
+
+[15] Yu et al. *Language Models are Super Mario: Absorbing Abilities from Homologous Models as a Free Lunch*（DARE）. ICML 2024. [arXiv:2311.03099](https://arxiv.org/abs/2311.03099)
